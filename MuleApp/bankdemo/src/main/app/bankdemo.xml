@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+   <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="${http.port}" doc:name="HTTP Listener Configuration"/>
+    <http:request-config name="HTTP_Request_Configuration_stock"  host="dev.markitondemand.com" port="80" doc:name="HTTP Request Configuration"/>
+    <http:request-config name="HTTP_Request_Configuration_exchange" protocol="HTTPS" host="currency-exchange.p.mashape.com" port="443" doc:name="HTTP Request Configuration"/>
+  
+
+    <flow name="StockExchange">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/stock" doc:name="HTTP"/>
+        <set-variable variableName="company" value="#[message.inboundProperties.'http.query.params'.company]" doc:name="Variable"/>
+        <http:request config-ref="HTTP_Request_Configuration_stock" path="MODApis/Api/v2/Lookup/json" method="GET" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="input" value="#[flowVars.company]"/>
+            </http:request-builder>
+        </http:request>
+       <json:json-to-object-transformer returnClass="java.lang.Object" doc:name="JSON to Object"/>
+        <set-variable variableName="symbol" value="#[message.payload[0].Symbol]" doc:name="Variable"/>
+        <http:request config-ref="HTTP_Request_Configuration_stock" path="MODApis/Api/v2/Quote/json" method="GET" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="symbol" value="#[flowVars.symbol]"/>
+            </http:request-builder>
+        </http:request>
+    </flow>
+    
+     <flow name="bankdemoFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/exchange" doc:name="HTTP"/>
+        <set-variable variableName="from" value="#[message.inboundProperties.'http.query.params'.from]" doc:name="Variable"/>
+        <set-variable variableName="to" value="#[message.inboundProperties.'http.query.params'.to]" doc:name="Variable"/>
+        <set-variable variableName="q" value="#[message.inboundProperties.'http.query.params'.q]" doc:name="Variable"/>
+        <http:request config-ref="HTTP_Request_Configuration_exchange" path="/exchange" method="GET" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="from" value="#[flowVars.from]"/>
+                <http:query-param paramName="to" value="#[flowVars.to]"/>
+                <http:query-param paramName="q" value="#[flowVars.q]"/>
+                <http:header headerName="X-Mashape-Key" value="NqqBVS33W2mshhldQgiS8ZOCG4F2p1ymJ2xjsnwcqtIjHZw32r"/>
+                <http:header headerName="Accept" value="text/plain"/>
+            </http:request-builder>
+        </http:request>
+    </flow>
+</mule>

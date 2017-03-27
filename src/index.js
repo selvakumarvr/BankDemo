@@ -30,7 +30,7 @@ CurrencyConverter.prototype.eventHandlers.onSessionStarted = function (sessionSt
 
 CurrencyConverter.prototype.eventHandlers.onLaunch = function (launchRequest, session, response) {
     console.log("CurrencyConverter onLaunch requestId: " + launchRequest.requestId + ", sessionId: " + session.sessionId);
-    response.ask("What currencies would you like me to look up?", "Say a currency, like 'USD Dollar', or say 'help' for additional instructions.");
+    response.ask("Welcome to TIAA Direct Demo application, What do you want to do??", "Say a account balance, or how much 'INR' is '1000' 'USD' or say 'help' for additional instructions.");
 };
 
 /**
@@ -43,6 +43,21 @@ CurrencyConverter.prototype.eventHandlers.onSessionEnded = function (sessionEnde
 };
 
 CurrencyConverter.prototype.intentHandlers = {
+    "GetTickerIntent": function (intent, session, response) {
+        var companyVar = intent.slots.CompanyName;
+
+        if(!companyVar.value ){
+          response.ask("I didn't quite get that. Please provide COMPANY name?");
+
+        }else{
+
+            var company=companyVar.value;
+            // send the data to API endpoint
+            handleStockRequest(company, response);
+        }
+    },
+
+
     "GetExchangeRate": function (intent, session, response) {
         var currFrom = intent.slots.CURRENCY_FROM;
         var currTo = intent.slots.CURRENCY_TO;
@@ -74,6 +89,7 @@ CurrencyConverter.prototype.intentHandlers = {
         }
     },
 
+
     "GetBankIntent": function (intent, session, response) {
         response.ask("You have 12000 dollors in your checking and 8000 for your savings");
     },
@@ -99,6 +115,32 @@ function handleRequest(currFrom, currTo, amount, response) {
         }
     });
 }
+
+function handleStockRequest(company, response) {
+    getStockExchange(company, function(err, body){
+        if (err) {
+            response.tell('Sorry, the stock service is experiencing a problem with your request. Please provide real currencies.');
+        } else {
+           var stockDetails = JSON.parse(body)
+            response.tell('There you go: ' + company + ' stock current value is ' + stockDetails.LastPrice);
+        }
+    });
+}
+
+function getStockExchange(company, callback){
+    var url = BASE_URL + '/stock?company= + ' + company;
+    unirest.get(url)
+      .end(function (result) {
+        console.log(result.body)
+        console.log(typeof result.body)
+        if(result.body === '0' || result.body === 'Result not available'){
+            callback(new Error('Error has occured'));
+        } else {
+            callback(null, result.body);
+        }
+    });
+}
+
 
 function getCurrencyExchange(currFrom, currTo, amount, callback){
     var url = BASE_URL + '/exchange?from= + ' + currFrom + '&q=' + amount + '&to=' + currTo;
